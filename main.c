@@ -31,22 +31,36 @@ int main(int argc, char *argv[]) {
     if (processes_FIFO != NULL) {
         int total_waiting_time = 0;
         int total_finishing_time = 0;
+        int total_waiting_time_Banker = 0;
+        int total_finishing_time_Banker = 0;
         int total_percentage = 0;
-        printf("%23s\n", "FIFO");
+        printf("%23s %30s\n", "FIFO", "BANKER'S");
         for (int i = 0; i < number_of_processes; i++) {
             if (processes_FIFO[i].was_aborted == 1) {
-                printf("%10s %-7d %s\n", "Task", i + 1, "aborted");
+                printf("%10s %-7d %-11s", "Task", i + 1, "aborted");
             } else {
                 int finish_time = processes_FIFO[i].time_taken;
                 int waiting_time = processes_FIFO[i].time_waiting;
-                int percentage_waiting = (int)round((((double)waiting_time / (double)finish_time) * 100));  // fix rounding
+                int percentage_waiting = (int)round((((double)waiting_time / (double)finish_time) * 100));
                 total_finishing_time += finish_time;
                 total_waiting_time += waiting_time;
+                printf("%10s %d %7d %3d %4d%%", "Task", i + 1, finish_time, waiting_time, percentage_waiting);
+            }
+            if (processes_Banker[i].was_aborted == 1) {
+                printf("%10s %-7d %s\n", "Task", i + 1, "aborted");
+            } else {
+                int finish_time = processes_Banker[i].time_taken;
+                int waiting_time = processes_Banker[i].time_waiting;
+                int percentage_waiting = (int)round((((double)waiting_time / (double)finish_time) * 100));
+                total_finishing_time_Banker += finish_time;
+                total_waiting_time_Banker += waiting_time;
                 printf("%10s %d %7d %3d %4d%%\n", "Task", i + 1, finish_time, waiting_time, percentage_waiting);
             }
         }
         total_percentage = (int)(round(((double)total_waiting_time / (double)total_finishing_time) * 100));
-        printf("%11s %8d %3d %4d%%\n", "total", total_finishing_time, total_waiting_time, total_percentage);  // fix percentage
+        printf("%11s %8d %3d %4d%%", "total", total_finishing_time, total_waiting_time, total_percentage);
+        total_percentage = (int)(round(((double)total_waiting_time_Banker / (double)total_finishing_time_Banker) * 100));
+        printf("%11s %8d %3d %4d%%\n", "total", total_finishing_time_Banker, total_waiting_time_Banker, total_percentage);
     }
     free(processes_FIFO);
     free(processes_Banker);
@@ -269,6 +283,7 @@ void Banker(resource *resource_count, Process processes[]) {
             int get_current_pointer = processes[i].current_request_pointer;
             read_request *current_request = &processes[i].all_requests[get_current_pointer];
             printf("%s %d %d %d\n", current_request->request_type, current_request->process_id, current_request->resource_type, current_request->resource_units);
+
             if (check_initiate(current_request->request_type) == 1) {
                 int get_unit_type = current_request->resource_type;
                 int get_unit_amount = current_request->resource_units;
@@ -314,6 +329,33 @@ void Banker(resource *resource_count, Process processes[]) {
         }
         release_queue_pointer = -1;
 
+        for (int i = 0; i <= blocked_queue_pointer; i++) {
+            int current_request = blocked_queue[i]->current_request_pointer;
+            int unit_type = blocked_queue[i]->all_requests[current_request].resource_type;
+            int unit_amount = blocked_queue[i]->all_requests[current_request].resource_units;
+            int move_blocked = 0;
+            for (int j = 0; j < resource_count->resource_types; j++) {  // check if process can run
+                if (resource_count->resource_available[j] + blocked_queue[i]->held_resource[j] < blocked_queue[i]->initial_claim[j]) {
+                    move_blocked = 1;
+                    break;
+                }
+            }
+            if (move_blocked == 1) {
+                // do nothing
+            } else {
+                resource_count->resource_available[unit_type - 1] -= unit_amount;
+                blocked_queue[i]->held_resource[unit_type - 1] += unit_amount;
+                blocked_queue[i]->is_waiting = 0;
+
+                for (int j = i; j < blocked_queue_pointer; j++) {
+                    blocked_queue[j] = blocked_queue[j + 1];
+                }
+                blocked_queue_pointer--;
+                i--;
+                continue;
+            }
+        }
+
         for (int i = 0; i <= request_queue_pointer; i++) {
             int current_request = request_queue[i]->current_request_pointer;  // get current request to know how much to request
             int unit_type = request_queue[i]->all_requests[current_request].resource_type;
@@ -321,15 +363,27 @@ void Banker(resource *resource_count, Process processes[]) {
             if ((request_queue[i]->held_resource[unit_type - 1] + unit_amount) > request_queue[i]->initial_claim[unit_type - 1]) {  // trying to exceed initial claim
                 request_queue[i]->is_terminated = 1;
                 request_queue[i]->was_aborted = 1;
+                released_resource[unit_type - 1] += unit_amount;
+                request_queue[i]->held_resource[unit_type - 1] -= unit_amount;
+                pending_release = 1;
                 for (int j = i; j < request_queue_pointer; j++) {
                     request_queue[j] = request_queue[j + 1];
                 }
                 request_queue_pointer--;
                 i--;
                 continue;
-            } else if (resource_count->resource_available[unit_type - 1] < request_queue[i]->initial_claim[unit_type - 1]) {  // move to blocked state
+            }
+            int move_blocked = 0;
+            for (int j = 0; j < resource_count->resource_types; j++) {  // check if process can run
+                if (resource_count->resource_available[j] + request_queue[i]->held_resource[j] < request_queue[i]->initial_claim[j]) {
+                    move_blocked = 1;
+                    break;
+                }
+            }
+            if (move_blocked == 1) {
                 blocked_queue_pointer++;
                 blocked_queue[blocked_queue_pointer] = request_queue[i];
+                request_queue[i]->is_waiting = 1;
                 for (int j = i; j < request_queue_pointer; j++) {
                     request_queue[j] = request_queue[j + 1];
                 }
@@ -355,8 +409,20 @@ void Banker(resource *resource_count, Process processes[]) {
             }
         }
 
-        printf("\n");
+        for (int i = 0; i < resource_count->process_count; i++) {
+            for (int j = 0; j < resource_count->resource_types; j++) {
+                printf("Process %d has %d at %d\n", i + 1, processes[i].held_resource[j], time_taken);
+            }
+        }
         time_taken++;
+        printf("\n");
+    }
+    for (int i = 0; i < resource_count->resource_types; i++) {
+        printf("Resource left %d\n", resource_count->resource_available[i]);
+    }
+    printf("Time Taken %d\n", time_taken);
+    for (int i = 0; i < resource_count->process_count; i++) {
+        printf("Process %d finished at %d\n", i + 1, processes[i].time_taken);
     }
     free(released_resource);
 }
