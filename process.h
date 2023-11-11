@@ -9,6 +9,7 @@
 // representation of a a process
 typedef struct Process {
     read_request *all_requests;
+    int *initial_claim;
     int request_size;
     int current_request_pointer;
     int is_terminated;
