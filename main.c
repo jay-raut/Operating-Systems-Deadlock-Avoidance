@@ -268,7 +268,7 @@ void Banker(resource *resource_count, Process processes[]) {
     int release_queue_pointer = -1;
     int blocked_queue_pointer = -1;
     int pending_release = 0;
-    while (check_all_terminated(resource_count, processes) == 0) {
+    while (check_all_terminated(resource_count, processes) == 0 && time_taken < 30) {
         if (pending_release == 1) {
             for (int i = 0; i < resource_count->resource_types; i++) {  // releasing resources into resource_count
                 resource_count->resource_available[i] += released_resource[i];
@@ -363,8 +363,11 @@ void Banker(resource *resource_count, Process processes[]) {
             if ((request_queue[i]->held_resource[unit_type - 1] + unit_amount) > request_queue[i]->initial_claim[unit_type - 1]) {  // trying to exceed initial claim
                 request_queue[i]->is_terminated = 1;
                 request_queue[i]->was_aborted = 1;
-                released_resource[unit_type - 1] += unit_amount;
-                request_queue[i]->held_resource[unit_type - 1] -= unit_amount;
+                for (int j = 0; j < resource_count->resource_types; j++) {
+                    released_resource[j] += request_queue[i]->held_resource[j];
+                    request_queue[i]->held_resource[j] = 0;
+                }
+
                 pending_release = 1;
                 for (int j = i; j < request_queue_pointer; j++) {
                     request_queue[j] = request_queue[j + 1];
@@ -411,7 +414,7 @@ void Banker(resource *resource_count, Process processes[]) {
 
         for (int i = 0; i < resource_count->process_count; i++) {
             for (int j = 0; j < resource_count->resource_types; j++) {
-                printf("Process %d has %d at %d\n", i + 1, processes[i].held_resource[j], time_taken);
+                printf("Process %d has %d at %d resource left %d\n", i + 1, processes[i].held_resource[j], time_taken, resource_count->resource_available[j]);
             }
         }
         time_taken++;
