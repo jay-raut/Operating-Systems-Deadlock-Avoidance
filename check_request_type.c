@@ -1,3 +1,9 @@
+/**
+ * Full Name: Jay Raut
+ * Course ID: Section B
+ * Description: checks the request type given a char array
+ */
+
 int check_initiate(char *request_type) {
     char initiate[] = "initiate";
     for (int i = 0; i < sizeof(initiate) / sizeof(char); i++) {
@@ -9,7 +15,6 @@ int check_initiate(char *request_type) {
 }
 int check_terminated(char *request_type) {
     char terminated[] = "terminate";
-
     for (int i = 0; i < sizeof(terminated) / sizeof(char); i++) {
         if (request_type[i] != terminated[i]) {
             return 0;

@@ -282,8 +282,6 @@ void Banker(resource *resource_count, Process processes[]) {
             }
             int get_current_pointer = processes[i].current_request_pointer;
             read_request *current_request = &processes[i].all_requests[get_current_pointer];
-            printf("%s %d %d %d\n", current_request->request_type, current_request->process_id, current_request->resource_type, current_request->resource_units);
-
             if (check_initiate(current_request->request_type) == 1) {
                 int get_unit_type = current_request->resource_type;
                 int get_unit_amount = current_request->resource_units;
@@ -411,21 +409,7 @@ void Banker(resource *resource_count, Process processes[]) {
                 processes[i].time_waiting++;
             }
         }
-
-        for (int i = 0; i < resource_count->process_count; i++) {
-            for (int j = 0; j < resource_count->resource_types; j++) {
-                printf("Process %d has %d at %d resource left %d\n", i + 1, processes[i].held_resource[j], time_taken, resource_count->resource_available[j]);
-            }
-        }
         time_taken++;
-        printf("\n");
-    }
-    for (int i = 0; i < resource_count->resource_types; i++) {
-        printf("Resource left %d\n", resource_count->resource_available[i]);
-    }
-    printf("Time Taken %d\n", time_taken);
-    for (int i = 0; i < resource_count->process_count; i++) {
-        printf("Process %d finished at %d\n", i + 1, processes[i].time_taken);
     }
     free(released_resource);
 }
