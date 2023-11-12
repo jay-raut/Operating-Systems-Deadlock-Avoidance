@@ -9,11 +9,6 @@
 #include "process.h"
 #include "resource.h"
 
-#define MAX_VALUE 0x7FFFFFFF
-#define MAX_LINE_LENGTH 100
-#define MAX_INITIAL_UNITS 100
-#define MAX_TASK_REQUESTS 50
-#define MAX_REQUEST_SIZE 50
 void FIFO(resource *, Process[]);
 void Banker(resource *, Process[]);
 void print_units(resource *);
@@ -241,7 +236,7 @@ void FIFO(resource *resource_count, Process processes[]) {
                         deadlock_count++;
                     }
                 }
-                if (deadlock_count != blocked_queue_pointer + 1 + request_queue_pointer + 1) {  // if the deadlock is not there then break, deadlock is checked by comparing
+                if (deadlock_count != blocked_queue_pointer + 1 + request_queue_pointer + 1 || deadlock_count == 0) {  // if the deadlock is not there then break, deadlock is checked by comparing
                                                                                                 //  number of deadlocked processes to number of processes in blocked and request queue
                     break;
                 }
@@ -255,6 +250,7 @@ void FIFO(resource *resource_count, Process processes[]) {
             }
         }
     }
+
     free(released_resource);
 }
 
@@ -451,19 +447,29 @@ Process *initalize_FIFO(char **argv) {
     }
     resource_count.resource_available = resource_types_array;                    // reference the array in resource count
     Process *processes = calloc(resource_count.process_count, sizeof(Process));  // all processes
-    for (int i = 0; i < resource_count.process_count; i++) {                     // get all request for each process and store into memory
-        read_request *requests = (read_request *)calloc(MAX_TASK_REQUESTS, sizeof(read_request));
-        int current_request = 0;
-        while (1) {  // keep reading until terminated
-            char *request_type = calloc(MAX_REQUEST_SIZE, sizeof(char));
-            fscanf(file_pointer, "%s %d %d %d", request_type, &requests[current_request].process_id, &requests[current_request].resource_type, &requests[current_request].resource_units);
-            requests[current_request].request_type = request_type;
-            processes[i].pid = requests[current_request].process_id;
-            current_request++;
-            if (check_terminated(request_type)) {
-                break;
-            }
+
+    for (int i = 0; i < resource_count.process_count; i++) {
+        processes[i].all_requests = calloc(MAX_TASK_REQUESTS, sizeof(read_request));
+        processes[i].request_size = 0;
+    }
+
+    while (1) {//parsing the file
+        char *request_type = calloc(MAX_REQUEST_SIZE, sizeof(char));
+        int request_process = 0;
+        int request_unit = 0;
+        int request_amount = 0;
+        if (fscanf(file_pointer, "%s %d %d %d", request_type, &request_process, &request_unit, &request_amount) == EOF) {
+            break;
         }
+        int current_request_pointer = processes[request_process - 1].current_request_pointer;
+        processes[request_process - 1].all_requests[current_request_pointer].request_type = request_type;
+        processes[request_process - 1].all_requests[current_request_pointer].process_id = request_process;
+        processes[request_process - 1].all_requests[current_request_pointer].resource_type = request_unit;
+        processes[request_process - 1].all_requests[current_request_pointer].resource_units = request_amount;
+        processes[request_process - 1].current_request_pointer++;
+        processes[request_process - 1].request_size++;
+    }
+    for (int i = 0; i < resource_count.process_count; i++) {
         processes[i].is_terminated = 0;
         processes[i].was_aborted = 0;
         processes[i].is_waiting = 0;
@@ -471,14 +477,14 @@ Process *initalize_FIFO(char **argv) {
         processes[i].time_taken = 0;
         processes[i].time_waiting = 0;
         processes[i].current_request_pointer = 0;
-        processes[i].request_size = current_request;
-        processes[i].all_requests = requests;
         processes[i].currently_computing = 0;
         processes[i].compute_cycles = 0;
         processes[i].initial_claim = calloc(resource_count.resource_types, sizeof(int));
+        processes[i].pid = i + 1;
     }
 
     number_of_processes = resource_count.process_count;
+
     FIFO(&resource_count, processes);
     for (int i = 0; i < resource_count.process_count; i++) {
         free(processes[i].held_resource);  // free held resources
@@ -529,19 +535,28 @@ Process *initalize_Banker(char **argv) {
     }
     resource_count.resource_available = resource_types_array;                    // reference the array in resource count
     Process *processes = calloc(resource_count.process_count, sizeof(Process));  // all processes
-    for (int i = 0; i < resource_count.process_count; i++) {                     // get all request for each process and store into memory
-        read_request *requests = (read_request *)calloc(MAX_TASK_REQUESTS, sizeof(read_request));
-        int current_request = 0;
-        while (1) {  // keep reading until terminated
-            char *request_type = calloc(MAX_REQUEST_SIZE, sizeof(char));
-            fscanf(file_pointer, "%s %d %d %d", request_type, &requests[current_request].process_id, &requests[current_request].resource_type, &requests[current_request].resource_units);
-            requests[current_request].request_type = request_type;
-            processes[i].pid = requests[current_request].process_id;
-            current_request++;
-            if (check_terminated(request_type)) {
-                break;
-            }
+for (int i = 0; i < resource_count.process_count; i++) {
+        processes[i].all_requests = calloc(MAX_TASK_REQUESTS, sizeof(read_request));
+        processes[i].request_size = 0;
+    }
+
+    while (1) {//parsing file 
+        char *request_type = calloc(MAX_REQUEST_SIZE, sizeof(char));
+        int request_process = 0;
+        int request_unit = 0;
+        int request_amount = 0;
+        if (fscanf(file_pointer, "%s %d %d %d", request_type, &request_process, &request_unit, &request_amount) == EOF) {
+            break;
         }
+        int current_request_pointer = processes[request_process - 1].current_request_pointer;
+        processes[request_process - 1].all_requests[current_request_pointer].request_type = request_type;
+        processes[request_process - 1].all_requests[current_request_pointer].process_id = request_process;
+        processes[request_process - 1].all_requests[current_request_pointer].resource_type = request_unit;
+        processes[request_process - 1].all_requests[current_request_pointer].resource_units = request_amount;
+        processes[request_process - 1].current_request_pointer++;
+        processes[request_process - 1].request_size++;
+    }
+    for (int i = 0; i < resource_count.process_count; i++) {
         processes[i].is_terminated = 0;
         processes[i].was_aborted = 0;
         processes[i].is_waiting = 0;
@@ -549,11 +564,10 @@ Process *initalize_Banker(char **argv) {
         processes[i].time_taken = 0;
         processes[i].time_waiting = 0;
         processes[i].current_request_pointer = 0;
-        processes[i].request_size = current_request;
-        processes[i].all_requests = requests;
         processes[i].currently_computing = 0;
         processes[i].compute_cycles = 0;
         processes[i].initial_claim = calloc(resource_count.resource_types, sizeof(int));
+        processes[i].pid = i + 1;
     }
 
     number_of_processes = resource_count.process_count;
