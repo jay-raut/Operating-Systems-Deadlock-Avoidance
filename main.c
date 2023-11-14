@@ -1,3 +1,8 @@
+/**
+ * Full Name: Jay Raut
+ * Course ID: Section B
+ * Description: Main Function for all algorithms to run
+ */
 #include "main.h"
 
 #include <stdio.h>
