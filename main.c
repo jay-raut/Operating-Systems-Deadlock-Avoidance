@@ -15,7 +15,9 @@ void print_units(resource *);
 int check_all_terminated(resource *, Process[]);
 Process *initalize_FIFO(char **);
 Process *initalize_Banker(char **);
+int compare_request(read_request *, read_request *);
 int number_of_processes = 0;
+void print_request(read_request request) { printf("%s %d %d %d\n", request.request_type, request.process_id, request.resource_type, request.resource_units); }
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         printf("Missing Arguments\n");
@@ -29,7 +31,7 @@ int main(int argc, char *argv[]) {
         int total_waiting_time_Banker = 0;
         int total_finishing_time_Banker = 0;
         int total_percentage = 0;
-        printf("%23s %30s\n", "FIFO", "BANKER'S");
+        printf("\n%23s %30s\n", "FIFO", "BANKER'S");
         for (int i = 0; i < number_of_processes; i++) {
             if (processes_FIFO[i].was_aborted == 1) {
                 printf("%10s %-7d %-11s", "Task", i + 1, "aborted");
@@ -72,6 +74,11 @@ void FIFO(resource *resource_count, Process processes[]) {
     int release_queue_pointer = -1;
     int blocked_queue_pointer = -1;
     int pending_release = 0;
+    read_request current_request;
+    current_request.request_type = calloc(MAX_REQUEST_SIZE, sizeof(char));
+    current_request.process_id = 0;
+    current_request.resource_type = 0;
+    current_request.resource_units = 0;
     while (check_all_terminated(resource_count, processes) == 0) {
         if (pending_release == 1) {
             for (int i = 0; i < resource_count->resource_types; i++) {  // releasing resources into resource_count
@@ -81,27 +88,41 @@ void FIFO(resource *resource_count, Process processes[]) {
             pending_release = 0;
         }
 
+        while (fscanf(resource_count->file_pointer, "%s %d %d %d", current_request.request_type, &current_request.process_id, &current_request.resource_type, &current_request.resource_units) != EOF) {
+            for (int i = 0; i < resource_count->process_count; i++) {
+                if (processes[i].is_terminated == 1 || processes[i].was_aborted == 1 || processes[i].is_waiting == 1) {  // skip the process
+                    continue;
+                }
+                int process_request_pointer = processes[i].current_request_pointer;
+                if (compare_request(&current_request, &(processes[i].all_requests[process_request_pointer])) == 1) {  // found matching request
+                    if (check_initiate(current_request.request_type) == 1) {
+                        // do nothing
+                    } else if (check_request(current_request.request_type) == 1 && processes[i].pending_request == 0) {  // if process is requesting then place into request queue
+                        request_queue_pointer++;
+                        request_queue[request_queue_pointer] = &processes[i];
+                        processes[i].pending_request = 1;
+                    } else if (check_release(current_request.request_type) == 1 && processes[i].pending_release == 0) {  // if process wants to release then place release queue
+                        release_queue_pointer++;
+                        release_queue[release_queue_pointer] = &processes[i];
+                        processes[i].pending_release = 1;
+                    } else if (check_compute(current_request.request_type) == 1 && processes[i].pending_compute == 0) {
+                        processes[i].currently_computing = 1;
+                        processes[i].compute_cycles++;
+                        processes[i].pending_compute = 1;
+                    } else if (check_terminated(current_request.request_type) == 1) {  // if the process has terminated, set terminate flag
+                        processes[i].is_terminated = 1;
+                        processes[i].time_taken = time_taken;
+                    }
+                    break;
+                }
+            }
+        }
+        fclose(resource_count->file_pointer);
+        resource_count->file_pointer = fopen(resource_count->file_name, "r");
         for (int i = 0; i < resource_count->process_count; i++) {
-            if (processes[i].is_terminated == 1 || processes[i].was_aborted == 1 || processes[i].is_waiting == 1) {  // skip the process
-                continue;
-            }
-            int get_current_pointer = processes[i].current_request_pointer;
-            read_request *current_request = &processes[i].all_requests[get_current_pointer];
-            if (check_initiate(current_request->request_type) == 1) {
-                // do nothing for initiate
-            } else if (check_request(current_request->request_type) == 1) {  // if process is requesting then place into request queue
-                request_queue_pointer++;
-                request_queue[request_queue_pointer] = &processes[i];
-            } else if (check_release(current_request->request_type) == 1) {  // if process wants to release then place release queue
-                release_queue_pointer++;
-                release_queue[release_queue_pointer] = &processes[i];
-            } else if (check_compute(current_request->request_type) == 1) {
-                processes[i].currently_computing = 1;
-                processes[i].compute_cycles++;
-            } else if (check_terminated(current_request->request_type) == 1) {  // if the process has terminated, set terminate flag
-                processes[i].is_terminated = 1;
-                processes[i].time_taken = time_taken;
-            }
+            processes[i].pending_compute = 0;
+            processes[i].pending_release = 0;
+            processes[i].pending_request = 0;
         }
         for (int i = 0; i < resource_count->process_count; i++) {  // check if compute processes are done
             if (processes[i].currently_computing == 1) {
@@ -237,7 +258,7 @@ void FIFO(resource *resource_count, Process processes[]) {
                     }
                 }
                 if (deadlock_count != blocked_queue_pointer + 1 + request_queue_pointer + 1 || deadlock_count == 0) {  // if the deadlock is not there then break, deadlock is checked by comparing
-                                                                                                //  number of deadlocked processes to number of processes in blocked and request queue
+                                                                                                                       //  number of deadlocked processes to number of processes in blocked and request queue
                     break;
                 }
             }
@@ -252,6 +273,8 @@ void FIFO(resource *resource_count, Process processes[]) {
     }
 
     free(released_resource);
+    free(current_request.request_type);
+    fclose(resource_count->file_pointer);
 }
 
 void Banker(resource *resource_count, Process processes[]) {
@@ -264,7 +287,12 @@ void Banker(resource *resource_count, Process processes[]) {
     int release_queue_pointer = -1;
     int blocked_queue_pointer = -1;
     int pending_release = 0;
-    while (check_all_terminated(resource_count, processes) == 0 && time_taken < 30) {
+    read_request current_request;
+    current_request.request_type = calloc(MAX_REQUEST_SIZE, sizeof(char));
+    current_request.process_id = 0;
+    current_request.resource_type = 0;
+    current_request.resource_units = 0;
+    while (check_all_terminated(resource_count, processes) == 0) {
         if (pending_release == 1) {
             for (int i = 0; i < resource_count->resource_types; i++) {  // releasing resources into resource_count
                 resource_count->resource_available[i] += released_resource[i];
@@ -272,35 +300,51 @@ void Banker(resource *resource_count, Process processes[]) {
             }
             pending_release = 0;
         }
-        for (int i = 0; i < resource_count->process_count; i++) {
-            if (processes[i].is_terminated == 1 || processes[i].was_aborted == 1 || processes[i].is_waiting == 1) {  // skip the process
-                continue;
-            }
-            int get_current_pointer = processes[i].current_request_pointer;
-            read_request *current_request = &processes[i].all_requests[get_current_pointer];
-            if (check_initiate(current_request->request_type) == 1) {
-                int get_unit_type = current_request->resource_type;
-                int get_unit_amount = current_request->resource_units;
-                if (resource_count->resource_available[get_unit_type - 1] < get_unit_amount) {  // if the initial request is more than system avaliable then abort
-                    processes[i].was_aborted = 1;
-                    processes[i].is_terminated = 1;
+        while (fscanf(resource_count->file_pointer, "%s %d %d %d", current_request.request_type, &current_request.process_id, &current_request.resource_type, &current_request.resource_units) != EOF) {
+            for (int i = 0; i < resource_count->process_count; i++) {
+                if (processes[i].is_terminated == 1 || processes[i].was_aborted == 1 || processes[i].is_waiting == 1) {  // skip the process
                     continue;
                 }
-                // store initial claims into the processes
-                processes[i].initial_claim[get_unit_type - 1] = get_unit_amount;
-            } else if (check_compute(current_request->request_type) == 1) {
-                processes[i].currently_computing = 1;
-                processes[i].compute_cycles++;
-            } else if (check_request(current_request->request_type) == 1) {
-                request_queue_pointer++;
-                request_queue[request_queue_pointer] = &processes[i];
-            } else if (check_release(current_request->request_type) == 1) {
-                release_queue_pointer++;
-                release_queue[release_queue_pointer] = &processes[i];
-            } else if (check_terminated(current_request->request_type) == 1) {
-                processes[i].is_terminated = 1;
-                processes[i].time_taken = time_taken;
+                int process_request_pointer = processes[i].current_request_pointer;
+                if (compare_request(&current_request, &(processes[i].all_requests[process_request_pointer])) == 1) {  // found matching request
+                    if (check_initiate(current_request.request_type) == 1) {
+                        int get_unit_type = current_request.resource_type;
+                        int get_unit_amount = current_request.resource_units;
+                        if (resource_count->resource_available[get_unit_type - 1] < get_unit_amount) {  // if initial claim is more than system abort
+                            processes[i].was_aborted = 1;
+                            processes[i].is_terminated = 1;
+                            printf("Banker aborts task %d before run begins:\n", processes[i].pid);
+                            printf("\tclaim for resource %d (%d) exceeds number of units present (%d)\n", get_unit_type, get_unit_amount, resource_count->resource_available[get_unit_type - 1]);
+                            continue;
+                        }
+                        // store initial claims into the processes
+                        processes[i].initial_claim[get_unit_type - 1] = get_unit_amount;
+                    } else if (check_request(current_request.request_type) == 1 && processes[i].pending_request == 0) {  // if process is requesting then place into request queue
+                        request_queue_pointer++;
+                        request_queue[request_queue_pointer] = &processes[i];
+                        processes[i].pending_request = 1;
+                    } else if (check_release(current_request.request_type) == 1 && processes[i].pending_release == 0) {  // if process wants to release then place release queue
+                        release_queue_pointer++;
+                        release_queue[release_queue_pointer] = &processes[i];
+                        processes[i].pending_release = 1;
+                    } else if (check_compute(current_request.request_type) == 1 && processes[i].pending_compute == 0) {
+                        processes[i].currently_computing = 1;
+                        processes[i].compute_cycles++;
+                        processes[i].pending_compute = 1;
+                    } else if (check_terminated(current_request.request_type) == 1) {  // if the process has terminated, set terminate flag
+                        processes[i].is_terminated = 1;
+                        processes[i].time_taken = time_taken;
+                    }
+                    break;
+                }
             }
+        }
+        fclose(resource_count->file_pointer);
+        resource_count->file_pointer = fopen(resource_count->file_name, "r");
+        for (int i = 0; i < resource_count->process_count; i++) {
+            processes[i].pending_compute = 0;
+            processes[i].pending_release = 0;
+            processes[i].pending_request = 0;
         }
         for (int i = 0; i < resource_count->process_count; i++) {  // check if compute processes are done
             if (processes[i].currently_computing == 1) {
@@ -357,6 +401,8 @@ void Banker(resource *resource_count, Process processes[]) {
             if ((request_queue[i]->held_resource[unit_type - 1] + unit_amount) > request_queue[i]->initial_claim[unit_type - 1]) {  // trying to exceed initial claim
                 request_queue[i]->is_terminated = 1;
                 request_queue[i]->was_aborted = 1;
+                printf("During cycle %d-%d of Banker's alogrithms\n", time_taken, time_taken + 1);
+                printf("\tTask %d's request exceeds its claim; aborted; %d units availble next cycle\n", request_queue[i]->pid, unit_amount);
                 for (int j = 0; j < resource_count->resource_types; j++) {
                     released_resource[j] += request_queue[i]->held_resource[j];
                     request_queue[i]->held_resource[j] = 0;
@@ -408,6 +454,8 @@ void Banker(resource *resource_count, Process processes[]) {
         time_taken++;
     }
     free(released_resource);
+    free(current_request.request_type);
+    fclose(resource_count->file_pointer);
 }
 
 Process *initalize_FIFO(char **argv) {
@@ -453,7 +501,7 @@ Process *initalize_FIFO(char **argv) {
         processes[i].request_size = 0;
     }
 
-    while (1) {//parsing the file
+    while (1) {  // parsing the file
         char *request_type = calloc(MAX_REQUEST_SIZE, sizeof(char));
         int request_process = 0;
         int request_unit = 0;
@@ -481,10 +529,14 @@ Process *initalize_FIFO(char **argv) {
         processes[i].compute_cycles = 0;
         processes[i].initial_claim = calloc(resource_count.resource_types, sizeof(int));
         processes[i].pid = i + 1;
+        processes[i].pending_compute = 0;
+        processes[i].pending_release = 0;
+        processes[i].pending_request = 0;
     }
 
     number_of_processes = resource_count.process_count;
-
+    resource_count.file_pointer = fopen(argv[1], "r");
+    resource_count.file_name = argv[1];
     FIFO(&resource_count, processes);
     for (int i = 0; i < resource_count.process_count; i++) {
         free(processes[i].held_resource);  // free held resources
@@ -535,12 +587,12 @@ Process *initalize_Banker(char **argv) {
     }
     resource_count.resource_available = resource_types_array;                    // reference the array in resource count
     Process *processes = calloc(resource_count.process_count, sizeof(Process));  // all processes
-for (int i = 0; i < resource_count.process_count; i++) {
+    for (int i = 0; i < resource_count.process_count; i++) {
         processes[i].all_requests = calloc(MAX_TASK_REQUESTS, sizeof(read_request));
         processes[i].request_size = 0;
     }
 
-    while (1) {//parsing file 
+    while (1) {  // parsing file
         char *request_type = calloc(MAX_REQUEST_SIZE, sizeof(char));
         int request_process = 0;
         int request_unit = 0;
@@ -568,9 +620,14 @@ for (int i = 0; i < resource_count.process_count; i++) {
         processes[i].compute_cycles = 0;
         processes[i].initial_claim = calloc(resource_count.resource_types, sizeof(int));
         processes[i].pid = i + 1;
+        processes[i].pending_compute = 0;
+        processes[i].pending_release = 0;
+        processes[i].pending_request = 0;
     }
 
     number_of_processes = resource_count.process_count;
+    resource_count.file_pointer = fopen(argv[1], "r");
+    resource_count.file_name = argv[1];
     Banker(&resource_count, processes);
     for (int i = 0; i < resource_count.process_count; i++) {
         free(processes[i].held_resource);  // free held resources
@@ -589,6 +646,18 @@ int check_all_terminated(resource *resource_count, Process processes[]) {
         if (processes[i].is_terminated == 0) {
             return 0;
         }
+    }
+    return 1;
+}
+
+int compare_request(read_request *request_a, read_request *request_b) {
+    for (int i = 0; i < MAX_REQUEST_SIZE; i++) {
+        if (request_a->request_type[i] != request_b->request_type[i]) {
+            return 0;
+        }
+    }
+    if (request_a->process_id != request_b->process_id || request_a->resource_type != request_b->resource_type || request_a->resource_units != request_b->resource_units) {
+        return 0;
     }
     return 1;
 }

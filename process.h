@@ -21,6 +21,12 @@ typedef struct Process {
     int pid;
     int compute_cycles;
     int currently_computing;
+    char *abort_reason;
+
+
+    int pending_request;
+    int pending_release;
+    int pending_compute;
 } Process;
 
 #endif
