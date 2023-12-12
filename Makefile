@@ -6,7 +6,7 @@ STD_FLAGS=-std=c99
 LIBS = -lm
 
 main.o: main.c main.h process.h resource.h 
-	$(CC) $(CFLAGS) main.c $(STD_FLAG)  -o banker $(LIBS)
+	$(CC) $(CFLAGS) main.c $(STD_FLAG)  -o banker $(LIBS) -g
 
 check_request_type.o: check_request_type.c
 	$(CC) $(CFLAGS) -c check_request_type.c

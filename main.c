@@ -305,6 +305,8 @@ void Banker(resource *resource_count, Process processes[]) {
             }
             pending_release = 0;
         }
+        fclose(resource_count->file_pointer);
+        resource_count->file_pointer = fopen(resource_count->file_name, "r");
         while (fscanf(resource_count->file_pointer, "%s %d %d %d", current_request.request_type, &current_request.process_id, &current_request.resource_type, &current_request.resource_units) != EOF) {
             for (int i = 0; i < resource_count->process_count; i++) {
                 if (processes[i].is_terminated == 1 || processes[i].was_aborted == 1 || processes[i].is_waiting == 1) {  // skip the process
@@ -344,8 +346,6 @@ void Banker(resource *resource_count, Process processes[]) {
                 }
             }
         }
-        fclose(resource_count->file_pointer);
-        resource_count->file_pointer = fopen(resource_count->file_name, "r");
         for (int i = 0; i < resource_count->process_count; i++) {
             processes[i].pending_compute = 0;
             processes[i].pending_release = 0;

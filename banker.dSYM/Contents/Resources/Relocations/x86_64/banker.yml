@@ -1,17 +1,20 @@
 ---
 triple:          'x86_64-apple-darwin'
-binary-path:     '/Users/jayraut/Documents/YorkU_Fall_Term_2023-2024/EECS3221/Assignments/as2/jay_raut_218976902/banker'
+binary-path:     banker
 relocations:
-  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _check_initiate, symObjAddr: 0x0, symBinAddr: 0x100002770, symSize: 0xC0 }
-  - { offsetInCU: 0x97, offset: 0x97, size: 0x8, addend: 0x0, symName: _check_initiate, symObjAddr: 0x0, symBinAddr: 0x100002770, symSize: 0xC0 }
-  - { offsetInCU: 0xE9, offset: 0xE9, size: 0x8, addend: 0x0, symName: _check_terminated, symObjAddr: 0xC0, symBinAddr: 0x100002830, symSize: 0xC0 }
-  - { offsetInCU: 0x13B, offset: 0x13B, size: 0x8, addend: 0x0, symName: _check_request, symObjAddr: 0x180, symBinAddr: 0x1000028F0, symSize: 0xB0 }
-  - { offsetInCU: 0x18D, offset: 0x18D, size: 0x8, addend: 0x0, symName: _check_release, symObjAddr: 0x230, symBinAddr: 0x1000029A0, symSize: 0xB0 }
-  - { offsetInCU: 0x1DF, offset: 0x1DF, size: 0x8, addend: 0x0, symName: _check_compute, symObjAddr: 0x2E0, symBinAddr: 0x100002A50, symSize: 0xB0 }
-  - { offsetInCU: 0x231, offset: 0x231, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x390, symBinAddr: 0x100002B00, symSize: 0x60 }
-  - { offsetInCU: 0x267, offset: 0x267, size: 0x8, addend: 0x0, symName: _initalize_FIFO, symObjAddr: 0x3F0, symBinAddr: 0x100002B60, symSize: 0x650 }
-  - { offsetInCU: 0x433, offset: 0x433, size: 0x8, addend: 0x0, symName: _initalize_Banker, symObjAddr: 0xA40, symBinAddr: 0x1000031B0, symSize: 0x10 }
-  - { offsetInCU: 0x459, offset: 0x459, size: 0x8, addend: 0x0, symName: _FIFO, symObjAddr: 0xA50, symBinAddr: 0x1000031C0, symSize: 0xC60 }
-  - { offsetInCU: 0x83A, offset: 0x83A, size: 0x8, addend: 0x0, symName: _check_all_terminated, symObjAddr: 0x16B0, symBinAddr: 0x100003E20, symSize: 0x70 }
-  - { offsetInCU: 0x890, offset: 0x890, size: 0x8, addend: 0x0, symName: _Banker, symObjAddr: 0x1720, symBinAddr: 0x100003E90, symSize: 0xE }
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _check_initiate, symObjAddr: 0x0, symBinAddr: 0x1000043F0, symSize: 0xC0 }
+  - { offsetInCU: 0x3F, offset: 0x3F, size: 0x8, addend: 0x0, symName: _number_of_processes, symObjAddr: 0x83B8, symBinAddr: 0x10000C000, symSize: 0x0 }
+  - { offsetInCU: 0x7D, offset: 0x7D, size: 0x8, addend: 0x0, symName: _check_initiate, symObjAddr: 0x0, symBinAddr: 0x1000043F0, symSize: 0xC0 }
+  - { offsetInCU: 0xCF, offset: 0xCF, size: 0x8, addend: 0x0, symName: _check_terminated, symObjAddr: 0xC0, symBinAddr: 0x1000044B0, symSize: 0xC0 }
+  - { offsetInCU: 0x121, offset: 0x121, size: 0x8, addend: 0x0, symName: _check_request, symObjAddr: 0x180, symBinAddr: 0x100004570, symSize: 0xB0 }
+  - { offsetInCU: 0x173, offset: 0x173, size: 0x8, addend: 0x0, symName: _check_release, symObjAddr: 0x230, symBinAddr: 0x100004620, symSize: 0xB0 }
+  - { offsetInCU: 0x1C5, offset: 0x1C5, size: 0x8, addend: 0x0, symName: _check_compute, symObjAddr: 0x2E0, symBinAddr: 0x1000046D0, symSize: 0xB0 }
+  - { offsetInCU: 0x217, offset: 0x217, size: 0x8, addend: 0x0, symName: _print_request, symObjAddr: 0x390, symBinAddr: 0x100004780, symSize: 0x30 }
+  - { offsetInCU: 0x23B, offset: 0x23B, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x3C0, symBinAddr: 0x1000047B0, symSize: 0x380 }
+  - { offsetInCU: 0x371, offset: 0x371, size: 0x8, addend: 0x0, symName: _initalize_FIFO, symObjAddr: 0x740, symBinAddr: 0x100004B30, symSize: 0x7D0 }
+  - { offsetInCU: 0x53D, offset: 0x53D, size: 0x8, addend: 0x0, symName: _initalize_Banker, symObjAddr: 0xF10, symBinAddr: 0x100005300, symSize: 0x7D0 }
+  - { offsetInCU: 0x709, offset: 0x709, size: 0x8, addend: 0x0, symName: _FIFO, symObjAddr: 0x16E0, symBinAddr: 0x100005AD0, symSize: 0x11C0 }
+  - { offsetInCU: 0xBF7, offset: 0xBF7, size: 0x8, addend: 0x0, symName: _check_all_terminated, symObjAddr: 0x28A0, symBinAddr: 0x100006C90, symSize: 0x70 }
+  - { offsetInCU: 0xC4D, offset: 0xC4D, size: 0x8, addend: 0x0, symName: _compare_request, symObjAddr: 0x2910, symBinAddr: 0x100006D00, symSize: 0xC0 }
+  - { offsetInCU: 0xCA3, offset: 0xCA3, size: 0x8, addend: 0x0, symName: _Banker, symObjAddr: 0x29D0, symBinAddr: 0x100006DC0, symSize: 0xF73 }
 ...
