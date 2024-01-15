@@ -3,7 +3,7 @@
 ## Usage 
 Compile the program by using the make file provided and run using ./banker 'input-file'
 
-##Output
+## Output
 
 The program will output the statistics for the FIFO and Bankers algorithm. The time taken, waiting time and percentage of time spent waiting for resources will be displayed. In FIFO, it is possible for a process(s) to be deadlocked. In this case 
 the process is aborted. In bankers algorithm, deadlock is not possible. 
